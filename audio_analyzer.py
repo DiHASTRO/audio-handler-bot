@@ -1,5 +1,8 @@
 import settings
 
+import os
+import subprocess
+
 from scipy.interpolate import make_interp_spline
 from scipy.fft import rfft, rfftfreq
 
@@ -9,12 +12,20 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.animation import FFMpegWriter
 
-def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_color='black', line_color='green', line_width=1):
+def add_audio_on_video(input_video_path, audio_path, output_video_path):
+  cmd = f'ffmpeg -i \"{input_video_path}\" -i \"{audio_path}\" -c:v copy -map 0:v:0 -map 1:a:0 \"{output_video_path}\"'
+  return subprocess.call(cmd, shell=True)
+
+def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_color='black', line_color='green', line_width=1, print_func=print):
   HEARING_BORDERS = (256, 16500)
 
   samplerate, data = wavfile.read(file_in)
   data = data.astype("float64")
-  audio_data = np.mean(data.T, axis = 0)
+  
+  if len(data.T.shape) > 1:
+    audio_data = np.mean(data.T, axis = 0)
+  else:
+    audio_data = data.T
   normalized_fcd = np.int16((audio_data / audio_data.max()) * 32767)
 
   duration = len(audio_data) / samplerate
@@ -25,7 +36,7 @@ def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_co
 
   frames_data = np.split(normalized_fcd[0:sample_per_frame * frames_count], frames_count)
 
-  fig = plt.figure(figsize=(10.8, 7.2), linewidth = line_width)
+  fig = plt.figure(figsize=(19.2, 10.8), linewidth = line_width)
   ax = plt.axes(xlim = HEARING_BORDERS, ylim=(-10, 5 * 10 ** 6))
 
   line, = ax.plot([], [], lw=line_width)
@@ -43,8 +54,8 @@ def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_co
   def animate(i):
 
     yf = rfft(frames_data[i])
-    if (i % 100 == 0):
-      print(f'{i} / {frames_count}')
+    if i % 100 == 0:
+      print_func(f'{i} / {frames_count}')
 
     x = xf
     y = np.abs(yf)
@@ -60,11 +71,59 @@ def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_co
 
   interval = 1 / fps
   ax.set_xscale('log', base=10)
-  anim = FuncAnimation(fig, animate, init_func=init, frames=frames_count, interval=interval) #, blit=True)
+  anim = FuncAnimation(fig, animate, init_func=init, frames=frames_count, interval=interval)
 
   ax.tick_params(axis='x', colors=line_color)
-  anim.save(file_out, writer = FFMpegWriter(fps=fps))
+  anim.save('tmp.mp4', writer = FFMpegWriter(fps=fps))
+  add_audio_on_video('tmp.mp4', file_in, file_out)
+  os.remove('tmp.mp4')
+
+def create_amplitude_image(file_in: str, file_out: str, bps: float = 300, backcolor: str = 'black', forecolor: str = 'red'):
+  samplerate, data = wavfile.read(file_in)
+
+  bps = np.min((len(data), bps))
+  to_substract = 0
+  if data.dtype == 'uint8':
+    to_substract = 2 ** 7 - 1
+  elif data.dtype == 'uint16':
+    to_substract = 2 ** 15 - 1
+  elif data.dtype == 'uint32':
+    to_substract = 2 ** 31 - 1
+  elif data.dtype == 'uint64':
+    to_substract = 2 ** 63 - 1
+  elif data.dtype == 'uint128':
+    to_substract = 2 ** 127 - 1
+  elif data.dtype == 'uint256':
+    to_substract = 2 ** 255 - 1
+
+  data = data.astype("float64")
+  data -= to_substract
+
+  if len(data.T.shape) > 1:
+    audio_data = np.mean(data.T, axis = 0)
+  else:
+    audio_data = data.T
+  
+  bars_count = int(len(audio_data) / samplerate * bps)
+  sample_per_bar = len(audio_data) // bars_count
+  splited_data = np.split(audio_data[0:sample_per_bar * bars_count], bars_count)
+  bars_data = np.array(list(map(np.mean, splited_data)))
+  x = np.linspace(0, len(data) / samplerate, len(bars_data))
+  y = np.abs(bars_data) - 1
+  yn = -np.abs(bars_data) + 1
+  
+  plt.figure(figsize=(19.2, 10.8), facecolor=backcolor)
+  ax = plt.axes([0, 0.1, 1, 0.8], frameon=False)
+  ax.set_facecolor(backcolor)
+  
+  plt.fill_between(x, y, np.zeros_like(y), color=forecolor)
+  plt.fill_between(x, y, np.zeros_like(x), color=forecolor)
+  plt.fill_between(x, yn, np.zeros_like(y), color=forecolor)
+  plt.fill_between(x, yn, np.zeros_like(x), color=forecolor)
+  ax.tick_params(axis='x', colors=forecolor)
+  ax.get_yaxis().set_ticks([])
+  plt.savefig(file_out)
 
 if __name__ == "__main__":
   print("Program is running...")
-  create_jumping_wave_video(settings.TAKEN_AUDIO_PATH + "Big-cities.wav", settings.GEN_VIDEO_PATH + "Big-cities.mp4", line_width=2, line_color="#FF9A26")
+  create_amplitude_image(settings.TAKEN_AUDIO_PATH + "XILOFONE.wav", settings.GEN_IMAGE_PATH + "XYLOFONE.jpg", forecolor="pink")
