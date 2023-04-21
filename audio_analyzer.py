@@ -1,4 +1,4 @@
-import settings
+import static
 
 import os
 import subprocess
@@ -12,11 +12,20 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.animation import FFMpegWriter
 
+def convert_audio_to_wav(input_audio, output_audio):
+  cmd = f'ffmpeg -y -i \"{input_audio}\" \"{output_audio}\"'
+  return_status = subprocess.call(cmd, shell=True)
+  os.remove(input_audio)
+  return return_status
+
 def add_audio_on_video(input_video_path, audio_path, output_video_path):
-  cmd = f'ffmpeg -i \"{input_video_path}\" -i \"{audio_path}\" -c:v copy -map 0:v:0 -map 1:a:0 \"{output_video_path}\"'
+  cmd = f'ffmpeg -y -i \"{input_video_path}\" -i \"{audio_path}\" -c:v copy -map 0:v:0 -map 1:a:0 \"{output_video_path}\"'
   return subprocess.call(cmd, shell=True)
 
-def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_color='black', line_color='green', line_width=1, print_func=print):
+def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_color='black', foreground_color='green', line_width=1, print_func=print):
+  """
+  Функция, раскладывающая аудиофайл по частотам, и показывающая, насколько интенсивна каждая частота в диапазоне от 256 до 16500 Гц
+  """
   HEARING_BORDERS = (256, 16500)
 
   samplerate, data = wavfile.read(file_in)
@@ -40,13 +49,13 @@ def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_co
   ax = plt.axes(xlim = HEARING_BORDERS, ylim=(-10, 5 * 10 ** 6))
 
   line, = ax.plot([], [], lw=line_width)
-
+  
   fig.set_facecolor(background_color)
   ax.set_facecolor(background_color)
 
   def init():
     line.set_data([], [])
-    line.set_color(line_color)
+    line.set_color(foreground_color)
     return line,
 
   N = len(frames_data[0])
@@ -67,18 +76,22 @@ def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_co
     line.set_data(X_ , Y_)
     return line, 
 
-  plt.rcParams['animation.ffmpeg_path'] = settings.FFPMEG_PATH
+  plt.rcParams['animation.ffmpeg_path'] = static.FFPMEG_PATH
 
   interval = 1 / fps
   ax.set_xscale('log', base=10)
   anim = FuncAnimation(fig, animate, init_func=init, frames=frames_count, interval=interval)
 
-  ax.tick_params(axis='x', colors=line_color)
+  ax.tick_params(axis='x', colors=foreground_color)
   anim.save('tmp.mp4', writer = FFMpegWriter(fps=fps))
   add_audio_on_video('tmp.mp4', file_in, file_out)
   os.remove('tmp.mp4')
 
-def create_amplitude_image(file_in: str, file_out: str, bps: float = 300, backcolor: str = 'black', forecolor: str = 'red'):
+def create_amplitude_image(file_in: str, file_out: str, bps: float = 300, background_color: str = 'black', foreground_color: str = 'red'):
+  """
+  Создаёт картинку, которая отражает амплитуду (громкость) звука в аудио файле в каждый момент времени
+  """
+  
   samplerate, data = wavfile.read(file_in)
 
   bps = np.min((len(data), bps))
@@ -112,18 +125,19 @@ def create_amplitude_image(file_in: str, file_out: str, bps: float = 300, backco
   y = np.abs(bars_data) - 1
   yn = -np.abs(bars_data) + 1
   
-  plt.figure(figsize=(19.2, 10.8), facecolor=backcolor)
+  plt.figure(figsize=(19.2, 10.8), facecolor=background_color)
   ax = plt.axes([0, 0.1, 1, 0.8], frameon=False)
-  ax.set_facecolor(backcolor)
+  ax.set_facecolor(background_color)
   
-  plt.fill_between(x, y, np.zeros_like(y), color=forecolor)
-  plt.fill_between(x, y, np.zeros_like(x), color=forecolor)
-  plt.fill_between(x, yn, np.zeros_like(y), color=forecolor)
-  plt.fill_between(x, yn, np.zeros_like(x), color=forecolor)
-  ax.tick_params(axis='x', colors=forecolor)
+  plt.fill_between(x, y, np.zeros_like(y), color=foreground_color)
+  plt.fill_between(x, y, np.zeros_like(x), color=foreground_color)
+  plt.fill_between(x, yn, np.zeros_like(y), color=foreground_color)
+  plt.fill_between(x, yn, np.zeros_like(x), color=foreground_color)
+  ax.tick_params(axis='x', colors=foreground_color)
   ax.get_yaxis().set_ticks([])
   plt.savefig(file_out)
 
 if __name__ == "__main__":
   print("Program is running...")
-  create_amplitude_image(settings.TAKEN_AUDIO_PATH + "XILOFONE.wav", settings.GEN_IMAGE_PATH + "XYLOFONE.jpg", forecolor="pink")
+  # create_amplitude_image(static.TAKEN_AUDIO_PATH + "XILOFONE.wav", static.GEN_IMAGE_PATH + "XYLOFONE.jpg", foreground_color="pink")
+  convert_audio_to_wav(static.TAKEN_AUDIO_PATH + "bs.mp3", static.TAKEN_AUDIO_PATH + "bs.wav")

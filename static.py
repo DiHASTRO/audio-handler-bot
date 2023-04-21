@@ -8,3 +8,6 @@ GEN_VIDEO_PATH = settings['generated-video-path']
 GEN_IMAGE_PATH = settings['generated-image-path']
 TAKEN_AUDIO_PATH = settings['taken-audio-path']
 BOT_TOKEN = settings['bot-token']
+
+with open("messages.json", 'r', encoding="utf-8") as jsf:
+  messages = json.load(jsf)
