@@ -63,8 +63,9 @@ def create_jumping_wave_video(file_in: str, file_out: str, fps=60, background_co
   def animate(i):
 
     yf = rfft(frames_data[i])
+    
     if i % 100 == 0:
-      print_func(f'{i} / {frames_count}')
+      print_func(f'Сделано: {(i / frames_count * 100):.2f}%')
 
     x = xf
     y = np.abs(yf)
