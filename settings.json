@@ -1,7 +1,7 @@
 {
-  "ffmpeg-path": "D:\\ffmpeg\\ffmpeg-2023-04-10-git-b18a9c2971-full_build\\bin\\ffmpeg.exe",
-  "generated-video-path": "C:\\Users\\KRATOS\\Desktop\\Обучение\\Архитектура компьютера\\Курсач 2\\audio-handler-bot\\media\\generated\\video\\",
-  "generated-image-path": "C:\\Users\\KRATOS\\Desktop\\Обучение\\Архитектура компьютера\\Курсач 2\\audio-handler-bot\\media\\generated\\image\\",
-  "taken-audio-path": "C:\\Users\\KRATOS\\Desktop\\Обучение\\Архитектура компьютера\\Курсач 2\\audio-handler-bot\\media\\taken\\audio\\",
-  "bot-token": "6288908175:AAG1e9wR5l-aQ7brC-JQi-jHRu_MHZUr63k"
+  "ffmpeg-path": "",
+  "generated-video-path": "",
+  "generated-image-path": "",
+  "taken-audio-path": "",
+  "bot-token": ""
 }
